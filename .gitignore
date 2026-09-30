@@ -7,6 +7,9 @@ node_modules/
 .expo/
 dist/
 web-build/
+work-web-build/
+work-native-build/
+work-ios-build/
 expo-env.d.ts
 
 # Native
@@ -16,6 +19,7 @@ expo-env.d.ts
 *.p8
 *.p12
 *.key
+*-firebase-adminsdk-*.json
 *.mobileprovision
 
 # Metro
@@ -25,12 +29,17 @@ expo-env.d.ts
 npm-debug.*
 yarn-debug.*
 yarn-error.*
+firebase-debug.log
+firestore-debug.log
 
 # macOS
 .DS_Store
 *.pem
 
 # local env files
+.env
+.env.*
+!.env.example
 .env*.local
 
 # typescript
@@ -39,3 +48,7 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+/functions/lib
+
+# accidental browser downloads
+/Online Python Compiler (Editor)_files/
