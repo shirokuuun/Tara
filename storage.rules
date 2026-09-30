@@ -1,0 +1,17 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /plans/{planId}/{fileName} {
+      function isOrganizer() {
+        return request.auth != null
+          && firestore.get(/databases/(default)/documents/plans/$(planId)).data.organizerId == request.auth.uid;
+      }
+
+      allow read: if request.auth != null;
+      allow write: if isOrganizer()
+        && request.resource.size < 8 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+    }
+  }
+}

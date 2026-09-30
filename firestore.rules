@@ -1,0 +1,119 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isMember(planId) {
+      return signedIn() && exists(/databases/$(database)/documents/plans/$(planId)/members/$(request.auth.uid));
+    }
+
+    // Tara uses a collection-group query to find every plan membership for
+    // the signed-in guest. Collection-group queries need a recursive match.
+    match /{path=**}/members/{userId} {
+      allow read: if signedIn()
+        && resource.data.userId == request.auth.uid;
+    }
+
+    match /users/{userId} {
+      allow read: if signedIn() && request.auth.uid == userId;
+      allow create: if signedIn()
+        && request.auth.uid == userId
+        && request.resource.data.id == userId
+        && request.resource.data.name is string
+        && request.resource.data.name.size() > 0
+        && request.resource.data.name.size() <= 80
+        && request.resource.data.isGuest == (request.auth.token.firebase.sign_in_provider == 'anonymous')
+        && request.resource.data.keys().hasOnly(['id', 'name', 'avatar', 'isGuest', 'createdAt']);
+      allow update: if signedIn()
+        && request.auth.uid == userId
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'avatar'])
+        && request.resource.data.name is string
+        && request.resource.data.name.size() > 0
+        && request.resource.data.name.size() <= 80;
+      allow delete: if false;
+
+      match /planSettings/{planId} {
+        allow read: if signedIn() && request.auth.uid == userId;
+        allow create: if signedIn()
+          && request.auth.uid == userId
+          && isMember(planId)
+          && request.resource.data.keys().hasOnly([
+            'planId', 'lastReadAt', 'lastReadMessageId', 'notificationsMuted'
+          ])
+          && request.resource.data.planId == planId;
+        allow update: if signedIn()
+          && request.auth.uid == userId
+          && isMember(planId)
+          && request.resource.data.planId == planId
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'lastReadAt', 'lastReadMessageId', 'notificationsMuted'
+          ])
+          && (!('lastReadAt' in resource.data)
+            || !('lastReadAt' in request.resource.data)
+            || request.resource.data.lastReadAt >= resource.data.lastReadAt);
+        allow delete: if false;
+      }
+
+      match /devices/{deviceId} {
+        allow read: if false;
+        allow create, update: if signedIn()
+          && request.auth.uid == userId
+          && request.resource.data.keys().hasOnly(['token', 'platform', 'updatedAt'])
+          && request.resource.data.token is string
+          && request.resource.data.platform in ['ios', 'android'];
+        allow delete: if signedIn() && request.auth.uid == userId;
+      }
+    }
+
+    match /invites/{inviteCode} {
+      allow read: if signedIn() && resource.data.active == true;
+      allow write: if false;
+    }
+
+    match /plans/{planId} {
+      allow read: if isMember(planId);
+      allow write: if false;
+
+      match /members/{userId} {
+        allow read: if isMember(planId)
+          || (signedIn() && resource.data.userId == request.auth.uid);
+        allow write: if false;
+      }
+
+      match /rsvps/{userId} {
+        allow read: if isMember(planId);
+        allow write: if false;
+      }
+
+      match /contributions/{itemId} {
+        allow read: if isMember(planId);
+        allow write: if false;
+      }
+
+      match /tasks/{taskId} {
+        allow read: if isMember(planId);
+        allow write: if false;
+      }
+
+      match /messages/{messageId} {
+        allow read: if isMember(planId);
+        allow write: if false;
+      }
+
+      match /operations/{operationId} {
+        allow read, write: if false;
+      }
+    }
+
+    match /pushJobs/{jobId} {
+      allow read, write: if false;
+    }
+
+    match /config/{configId} {
+      allow read, write: if false;
+    }
+  }
+}
