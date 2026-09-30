@@ -22,6 +22,10 @@ expo-env.d.ts
 *-firebase-adminsdk-*.json
 *.mobileprovision
 
+# Firebase platform config (keep local; provision per environment)
+/google-services.json
+/GoogleService-Info.plist
+
 # Metro
 .metro-health-check*
 
